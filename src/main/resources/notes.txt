@@ -1,0 +1,6 @@
+
+case class Foo(bar: String, baz: Boolean)
+
+val lbl = LabelledGeneric[Foo]
+val keys = Keys[lbl.Repr].apply
+keys: shapeless.::[Symbol with shapeless.tag.Tagged[String("bar")],shapeless.::[Symbol with shapeless.tag.Tagged[String("baz")],shapeless.HNil]] = 'bar :: 'baz :: HNil

@@ -1,3 +1,4 @@
+package base
 
 
 import scala.reflect.runtime._
@@ -17,6 +18,8 @@ object Schema extends App {
    */
   case class Field(name: String, value: Json)
 
+  def getType[T: ru.TypeTag](obj: T) = ru.typeOf[T]
+
   val stringType = ru.typeOf[String]
   val intType = ru.typeOf[Int]
   val floatType = ru.typeOf[Float]
@@ -24,6 +27,14 @@ object Schema extends App {
   val booleanType = ru.typeOf[Boolean]
   val listType = ru.typeOf[List[_]]
   val vectorType = ru.typeOf[Vector[_]]
+
+  val stringSymbol = ru.typeOf[String].typeSymbol
+  val intSymbol = ru.typeOf[Int].typeSymbol
+  val floatSymbol = ru.typeOf[Float].typeSymbol
+  val doubleSymbol = ru.typeOf[Double].typeSymbol
+  val booleanSymbol = ru.typeOf[Boolean].typeSymbol
+  val listSymbol = ru.typeOf[List[_]].typeSymbol
+  val vectorSymbol = ru.typeOf[Vector[_]].typeSymbol
 
 
   def getJsonType(t: universe.Type): String = {
@@ -37,40 +48,55 @@ object Schema extends App {
       t
     }
     // TODO: do it more nicely
-    val jt =
+    // does not work in scalatest
+    /*val jt =
       if      (tpe =:= stringType) { "string" }
       else if (tpe =:= intType) { "integer" }
       else if (tpe =:= floatType || tpe =:= doubleType) { "number" }
       else if (tpe <:< listType || tpe <:< vectorType) { "array" }
       else if (tpe =:= booleanType) { "boolean" }
       else { "object" }
+     */
+    // this version works with scalatest as well!
+    val sym = tpe.typeSymbol
+    val jt =
+      if      (sym == stringSymbol) { "string" }
+      else if (sym == intSymbol) { "integer" }
+      else if (sym == floatSymbol || sym == doubleSymbol) { "number" }
+      else if (sym == listSymbol || sym == vectorSymbol) { "array" }
+      else if (sym == booleanSymbol) { "boolean" }
+      else { "object" }
     jt
+}
+
+def jsonFromFields(fields: Iterable[Field]): Json = {
+Json.fromFields(fields.map(f => (f.name, f.value)))
+}
+
+def schema(t: universe.Type): Json = {
+val jsonType = getJsonType(t)
+val fieldType = Some(Field("type", Json.fromString(jsonType)))
+
+val members: Iterable[universe.Symbol] = t.members.filter(m => m.isTerm && m.asTerm.isVal)
+val fieldExtra: Option[Field] = jsonType match {
+  case "object" => {
+    Some(Field("properties", jsonFromFields(
+      members.map(m => Field(m.name.toString.trim, schema(m.typeSignature)))
+    )))
   }
+  case "array" => Some(Field("items", schema(t.typeArgs.head)))
+  case _ => None
+}
 
-  def jsonFromFields(fields: Iterable[Field]): Json = {
-    Json.fromFields(fields.map(f => (f.name, f.value)))
-  }
+jsonFromFields(List(fieldType, fieldExtra).flatten)
+}
 
-  def schema(t: universe.Type): Json = {
-    val jsonType = getJsonType(t)
-    val fieldType = Some(Field("type", Json.fromString(jsonType)))
+val root: universe.Type = ru.typeOf[Breakfast]
+val result: Json = schema(root)
+println(result.spaces2)
 
-    val members: Iterable[universe.Symbol] = t.members.filter(m => m.isTerm && m.asTerm.isVal)
-    val fieldExtra: Option[Field] = jsonType match {
-      case "object" => {
-        Some(Field("properties", jsonFromFields(
-          members.map(m => Field(m.name.toString.trim, schema(m.typeSignature)))
-        )))
-      }
-      case "array" => Some(Field("items", schema(t.typeArgs.head)))
-      case _ => None
-    }
-
-    jsonFromFields(List(fieldType, fieldExtra).flatten)
-  }
-
-  val root: universe.Type = ru.typeOf[Breakfast]
-  val result: Json = schema(root)
-  println(result.spaces2)
+def getBreakfast(): Json = {
+schema(ru.typeOf[Breakfast])
+}
 }
 
