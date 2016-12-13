@@ -7,3 +7,38 @@ Now we want to have an up-to-date documentation, what kind of data the rest endp
 Got some ideas from https://github.com/coursera/autoschema, but wasn't entirely satisfied with it.
 
 Uses circe as json library.
+
+
+This two dependent case classes
+
+```scala
+case class Breakfast(time: String, food: List[Food])
+case class Food(name: String, calories: Int)
+```
+
+get converted to the following json schema:
+
+```javascript
+{
+  "type" : "object",
+  "properties" : {
+    "food" : {
+      "type" : "array",
+      "items" : {
+        "type" : "object",
+        "properties" : {
+          "calories" : {
+            "type" : "integer"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        }
+      }
+    },
+    "time" : {
+      "type" : "string"
+    }
+  }
+}
+```
