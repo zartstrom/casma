@@ -11,7 +11,7 @@ libraryDependencies ++= Seq(
   //"org.scalameta" %% "scalameta" % "1.3.0",
   "io.circe" %% "circe-generic" % "0.6.0",
   "com.chuusai" %% "shapeless" % "2.3.2",
-  "org.scalatest" % "scalatest_2.11" % "3.0.0" % "test",
+  "org.scalatest" % "scalatest_2.12" % "3.0.1" % "test",
   "org.scalacheck" %% "scalacheck" % "1.13.4" % "test"
 )
 

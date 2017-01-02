@@ -21,9 +21,9 @@ object ScalaCheckDemo extends Properties("Demo") {
 
   type ISB = Int :+: String :+: Boolean :+: CNil
 
-  case class Funny(a: ISB, b: ISB, c: ISB)
+  //case class Funny(a: ISB, b: ISB, c: ISB)
   //def genISB: Gen[ISB] = oneOf(arbitrary[Int], arbitrary[String], arbitrary[Boolean])
-  val funny = Funny("s", true, 2)
+  //val funny = Funny("s", true, 2)
 
   property("parsable") = forAll { l: List[Int] =>
     schema(t = ru.typeOf[Breakfast]).spaces2.length >= 5
