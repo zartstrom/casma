@@ -9,6 +9,17 @@ case class Food(name: String, calories: Int)
 
 case class Dummy(s: String)
 
+sealed trait Payload
+case class OptinPayload(emailHash: String,
+                        optinType: String,
+                        status: String,
+                        optinTime: String,
+                        optinSource: String,
+                        campaign: Option[String]) extends Payload
+case class TechnicalInfo(createdByHost: String)
+case class Optin(info: TechnicalInfo, payload: OptinPayload)
+
+
 object Schema extends App {
   /*
    * Extract a json schema from nested case classes.
@@ -94,12 +105,12 @@ object Schema extends App {
     jsonFromFields(List(fieldType, fieldExtra).flatten)
   }
 
-  val root: universe.Type = ru.typeOf[Breakfast]
+  val root: universe.Type = ru.typeOf[Optin]
   val result: Json = schema(root)
   println(result.spaces2)
 
   def getBreakfast(): Json = {
-    schema(ru.typeOf[Breakfast])
+    schema(ru.typeOf[Optin])
   }
 
   //def getWeakType[T: ru.WeakTypeTag](obj: T) = ru.typeOf[T]
