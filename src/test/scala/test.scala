@@ -7,7 +7,7 @@ import org.scalacheck.Prop.forAll
 import shapeless._
 import scala.reflect.runtime.{universe => ru}
 
-import base.Schema.schema
+import base.Schema.schemaFromUniverseType
 import base.Breakfast
 
 
@@ -26,7 +26,7 @@ object ScalaCheckDemo extends Properties("Demo") {
   //val funny = Funny("s", true, 2)
 
   property("parsable") = forAll { l: List[Int] =>
-    schema(t = ru.typeOf[Breakfast]).spaces2.length >= 5
+    schemaFromUniverseType(t = ru.typeOf[Breakfast]).spaces2.length >= 5
   }
 
 }

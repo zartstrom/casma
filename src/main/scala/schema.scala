@@ -7,18 +7,16 @@ import io.circe.Json
 case class Breakfast(time: String, food: List[Food])
 case class Food(name: String, calories: Int)
 
-case class Dummy(s: String)
-
 sealed trait Payload
 case class OptinPayload(emailHash: String,
                         optinType: String,
                         status: String,
                         optinTime: String,
                         optinSource: String,
-                        campaign: Option[String]) extends Payload
+                        campaign: Option[String])
+    extends Payload
 case class TechnicalInfo(createdByHost: String)
 case class Optin(info: TechnicalInfo, payload: OptinPayload)
-
 
 object Schema extends App {
   /*
@@ -29,8 +27,9 @@ object Schema extends App {
   case class Field(name: String, value: Json)
 
   //def getType[T: ru.TypeTag](obj: T) = ru.typeOf[T]
-  def getType[T: ru.WeakTypeTag](obj: T) = ru.weakTypeOf[T]
+  //def getUniverseType[T: ru.WeakTypeTag](obj: T) = ru.weakTypeOf[T]
   def getWeakTypeTag[T: ru.WeakTypeTag](obj: T) = ru.weakTypeTag[T]
+  def getTypeTag[T: ru.TypeTag](obj: T) = ru.typeTag[T]
 
   val stringType = ru.typeOf[String]
   val intType = ru.typeOf[Int]
@@ -50,7 +49,6 @@ object Schema extends App {
 
   def getJsonType(t: universe.Type): String = {
     val isOptional = t.typeConstructor == ru.typeOf[Option[_]].typeConstructor
-
     // strip Option
     // TODO: use this information
     val tpe: universe.Type = if (isOptional) {
@@ -58,32 +56,35 @@ object Schema extends App {
     } else {
       t
     }
-    // TODO: do it more nicely
-    // does not work in scalatest
-    /*val jt =
-      if      (tpe =:= stringType) { "string" }
-      else if (tpe =:= intType) { "integer" }
-      else if (tpe =:= floatType || tpe =:= doubleType) { "number" }
-      else if (tpe <:< listType || tpe <:< vectorType) { "array" }
-      else if (tpe =:= booleanType) { "boolean" }
-      else { "object" }
-     */
-    // this version works with scalatest as well!
     val sym = tpe.typeSymbol
-    val jt =
-      if (sym == stringSymbol) { "string" } else if (sym == intSymbol) {
-        "integer"
-      } else if (sym == floatSymbol || sym == doubleSymbol) { "number" } else if (sym == listSymbol || sym == vectorSymbol) {
-        "array"
-      } else if (sym == booleanSymbol) { "boolean" } else { "object" }
-    jt
+    // TODO: refactor
+    case class JsonTypeMatch(jsonType: String, names: Set[String])
+    val poss = List(
+      JsonTypeMatch("string", Set("String", "class String")),
+      JsonTypeMatch("integer", Set("Int", "class Int")),
+      JsonTypeMatch("number",
+                    Set("Float", "class Float", "Double", "class Double")),
+      JsonTypeMatch("array",
+                    Set("Array", "class Array", "Vector", "class Vector")),
+      JsonTypeMatch("boolean", Set("Boolean", "class Boolean"))
+    )
+
+    // TODO: do it more nicely
+    val cand: Set[String] = Set(tpe.toString, sym.toString).filter(_ != null)
+    //println(cand)
+    //println(poss)
+    val res = poss.foldLeft("object")((b: String, j: JsonTypeMatch) => {
+      if (cand.intersect(j.names).isEmpty) b else j.jsonType
+    })
+    res
   }
 
   def jsonFromFields(fields: Iterable[Field]): Json = {
     Json.fromFields(fields.map(f => (f.name, f.value)))
   }
 
-  def schema(t: universe.Type): Json = {
+  def schemaFromUniverseType(t: universe.Type): Json = {
+    //println(t)
     val jsonType = getJsonType(t)
     val fieldType = Some(Field("type", Json.fromString(jsonType)))
 
@@ -95,26 +96,42 @@ object Schema extends App {
           Field("properties",
                 jsonFromFields(
                   members.map(m =>
-                    Field(m.name.toString.trim, schema(m.typeSignature)))
+                    Field(m.name.toString.trim,
+                          schemaFromUniverseType(m.typeSignature)))
                 )))
       }
-      case "array" => Some(Field("items", schema(t.typeArgs.head)))
+      case "array" =>
+        Some(Field("items", schemaFromUniverseType(t.typeArgs.head)))
       case _ => None
     }
 
     jsonFromFields(List(fieldType, fieldExtra).flatten)
   }
 
-  val root: universe.Type = ru.typeOf[Optin]
-  val result: Json = schema(root)
-  println(result.spaces2)
-
   def getBreakfast(): Json = {
-    schema(ru.typeOf[Optin])
+    schemaFromUniverseType(ru.typeOf[Optin])
   }
 
   //def getWeakType[T: ru.WeakTypeTag](obj: T) = ru.typeOf[T]
-  def schar[A](a: A): Json = {
-    schema(getType(getWeakTypeTag(a)))
+  def schemaFromInstance[A](a: A)(implicit ev: ru.WeakTypeTag[A]): Json = {
+    //println(ev.tpe)
+    schemaFromUniverseType(ev.tpe)
   }
+
+  //val root: universe.Type = ru.weakTypeOf[Optin]
+  //val result: Json = schemaFromUniverseType(root)
+  //println(result.spaces2)
+
+  val optin = Optin(TechnicalInfo("localhost"),
+                    OptinPayload("email", "type", "sl", "alf", "aflj", None))
+  val result2: Json = schemaFromInstance(optin)
+  println(result2.spaces2)
+
+  def test: Unit = {
+    case class Dummy(s: String)
+    val d = Dummy("yes")
+    val res = schemaFromInstance(d)
+    println(res)
+  }
+  test
 }

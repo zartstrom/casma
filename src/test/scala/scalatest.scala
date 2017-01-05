@@ -15,13 +15,15 @@ import base.Schema._
 
 class StackSpec extends FlatSpec {
 
-  "Breakfast" should "be parsable" in {
-    assert(getBreakfast().spaces2.length >= 5)
-  }
+  //"Breakfast" should "be parsable" in {
+  //  assert(getBreakfast().spaces2.length >= 5)
+  //}
 
   "Test case class" should "have type object" in {
-
+    case class Dummy(s: String)
     val d = Dummy("yes")
-    assert(schar(d).spaces2.length >= 2)
+    val res = schemaFromInstance(d)
+    println(res)
+    assert(res.spaces2.length >= 2)
   }
 }
