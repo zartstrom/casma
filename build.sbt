@@ -11,8 +11,10 @@ libraryDependencies ++= Seq(
   //"org.scalameta" %% "scalameta" % "1.3.0",
   "io.circe" %% "circe-generic" % "0.6.0",
   "com.chuusai" %% "shapeless" % "2.3.2",
+  "com.beachape" %% "enumeratum-circe" % "1.5.7",
   "org.scalatest" % "scalatest_2.12" % "3.0.1" % "test",
   "org.scalacheck" %% "scalacheck" % "1.13.4" % "test"
+
 )
 
 testOptions in Test += Tests.Argument(

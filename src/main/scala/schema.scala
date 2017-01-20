@@ -3,6 +3,8 @@ package base
 import scala.reflect.runtime._
 import scala.reflect.runtime.{universe => ru}
 import io.circe.Json
+import io.circe.syntax._
+import enumeratum.values._
 
 case class Breakfast(time: String, food: List[Food])
 case class Food(name: String, calories: Int)
@@ -17,6 +19,23 @@ case class OptinPayload(emailHash: String,
     extends Payload
 case class TechnicalInfo(createdByHost: String)
 case class Optin(info: TechnicalInfo, payload: OptinPayload)
+case class UserOptin(emailHash: String,
+                     optinType: String,
+                     status: String,
+                     optinTime: String,
+                     optinSource: String,
+                     campaign: Option[String])
+
+sealed abstract class OptinStatusItem(val value: String) extends StringEnumEntry
+case object OptinStatusItem
+    extends StringEnum[OptinStatusItem]
+    with StringCirceEnum[OptinStatusItem] {
+  case object Active extends OptinStatusItem(value = "active")
+  case object Revoke extends OptinStatusItem(value = "revoke")
+  case object Paused extends OptinStatusItem(value = "paused")
+  val values = findValues
+}
+
 
 object Schema extends App {
   /*
@@ -46,6 +65,10 @@ object Schema extends App {
   val booleanSymbol = ru.typeOf[Boolean].typeSymbol
   val listSymbol = ru.typeOf[List[_]].typeSymbol
   val vectorSymbol = ru.typeOf[Vector[_]].typeSymbol
+
+  def isOptional(t: universe.Type): Boolean = {
+    t.typeConstructor == ru.typeOf[Option[_]].typeConstructor
+  }
 
   def getJsonType(t: universe.Type): String = {
     val isOptional = t.typeConstructor == ru.typeOf[Option[_]].typeConstructor
@@ -79,59 +102,69 @@ object Schema extends App {
     res
   }
 
+  // Field is a stupid abstraction
   def jsonFromFields(fields: Iterable[Field]): Json = {
     Json.fromFields(fields.map(f => (f.name, f.value)))
   }
 
-  def schemaFromUniverseType(t: universe.Type): Json = {
+  def schemaFromUniverseType(t: universe.Type,
+                             titleField: List[Field] = Nil): Json = {
     //println(t)
     val jsonType = getJsonType(t)
-    val fieldType = Some(Field("type", Json.fromString(jsonType)))
+    val fieldType = Field("type", Json.fromString(jsonType))
 
     val members: Iterable[universe.Symbol] =
       t.members.filter(m => m.isTerm && m.asTerm.isVal)
-    val fieldExtra: Option[Field] = jsonType match {
+    val fieldExtra: List[Field] = jsonType match {
       case "object" => {
-        Some(
-          Field("properties",
-                jsonFromFields(
-                  members.map(m =>
-                    Field(m.name.toString.trim,
-                          schemaFromUniverseType(m.typeSignature)))
-                )))
+        val req: List[String] = members
+          .filter(m => !isOptional(m.typeSignature))
+          .map(m => m.name.toString.trim)
+          .toList
+          .sorted
+        val required = Field("required", req.asJson)
+
+        println(required)
+        val properties = Field(
+          "properties",
+          jsonFromFields(
+            members.toList
+              .sortBy(m => m.name.toString.trim)
+              .map(m =>
+                Field(m.name.toString.trim,
+                      schemaFromUniverseType(m.typeSignature)))
+          )
+        )
+        List(required, properties)
       }
       case "array" =>
-        Some(Field("items", schemaFromUniverseType(t.typeArgs.head)))
-      case _ => None
+        List(Field("items", schemaFromUniverseType(t.typeArgs.head)))
+      case _ => Nil
     }
 
-    jsonFromFields(List(fieldType, fieldExtra).flatten)
+    jsonFromFields(titleField ++ List(fieldType) ++ fieldExtra) // is ugly here
   }
 
   def getBreakfast(): Json = {
-    schemaFromUniverseType(ru.typeOf[Optin])
+    schemaFromUniverseType(ru.typeOf[Optin], Nil)
   }
 
   //def getWeakType[T: ru.WeakTypeTag](obj: T) = ru.typeOf[T]
   def schemaFromInstance[A](a: A)(implicit ev: ru.WeakTypeTag[A]): Json = {
-    //println(ev.tpe)
-    schemaFromUniverseType(ev.tpe)
+    val title: String = ev.tpe.toString.split("\\.").last
+    val titleFieldList = List(Field("title", title.asJson)) // ugly
+    schemaFromUniverseType(ev.tpe, titleFieldList)
   }
 
-  //val root: universe.Type = ru.weakTypeOf[Optin]
-  //val result: Json = schemaFromUniverseType(root)
-  //println(result.spaces2)
+  /* pure gold; don't delete */
+  /*
+  val root: universe.Type = ru.weakTypeOf[UserOptin]
+  val result: Json = schemaFromUniverseType(root, None)
+  println(result.spaces2)
+   */
 
   val optin = Optin(TechnicalInfo("localhost"),
                     OptinPayload("email", "type", "sl", "alf", "aflj", None))
   val result2: Json = schemaFromInstance(optin)
-  println(result2.spaces2)
-
-  def test: Unit = {
-    case class Dummy(s: String)
-    val d = Dummy("yes")
-    val res = schemaFromInstance(d)
-    println(res)
-  }
-  test
+  //println(result2.spaces2)
 }
