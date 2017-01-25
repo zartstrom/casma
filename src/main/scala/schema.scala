@@ -37,7 +37,8 @@ case object OptinStatusItem
 }
 
 
-object Schema extends App {
+//object Schema extends App {
+object Schema {
   /*
    * Extract a json schema from nested case classes.
    * There is https://github.com/coursera/autoschema but it uses play.json instead of circe, does stuff we don't need
