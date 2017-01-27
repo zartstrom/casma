@@ -23,11 +23,13 @@ object Astronaut {
     def encode(value: A): Json
     def typeEncode: Json
   }
-  def createEncoder[A](func: A => Json): JsonEncoder[A] =
+  //def createEncoder[A](func: A => Json): JsonEncoder[A] =
+  def createEncoder[A](result: Json): JsonEncoder[A] =
     new JsonEncoder[A] {
       def encode(value: A): Json =
-        func(value)
-      def typeEncode: Json = Json.Null
+        //func(value)
+        result
+      def typeEncode: Json = result
     }
 
   trait OptionFinder[A] {
@@ -44,27 +46,33 @@ object Astronaut {
 
 // Base type class instances:
   implicit val stringEncoder: JsonEncoder[String] =
-    createEncoder(_ => Json.obj(("type", Json.fromString("string"))))
-  //createEncoder(str => Json.fromString(str))
+    createEncoder(Json.obj(("type", Json.fromString("string"))))
+
   implicit val doubleEncoder: JsonEncoder[Double] =
-    createEncoder(_ => Json.obj(("type", Json.fromString("number"))))
-  // createEncoder(num => Json.fromDoubleOrNull(num))
+    createEncoder(Json.obj(("type", Json.fromString("number"))))
+
   implicit val intEncoder: JsonEncoder[Int] =
-    createEncoder(_ => Json.obj(("type", Json.fromString("integer"))))
-  //createEncoder(num => Json.fromInt(num))
+    createEncoder(Json.obj(("type", Json.fromString("integer"))))
+
   implicit val booleanEncoder: JsonEncoder[Boolean] =
-    createEncoder(_ => Json.obj(("type", Json.fromString("boolean"))))
-  // createEncoder(bool => Json.fromBoolean(bool))
+    createEncoder(Json.obj(("type", Json.fromString("boolean"))))
+
   implicit def listEncoder[A](
       implicit encoder: JsonEncoder[A]): JsonEncoder[List[A]] =
     createEncoder(
-      list =>
-        Json.obj(("type", Json.fromString("array")),
-                 ("items", encoder.encode(list.head))))  // TODO: need to fix the need to access head
+
+        Json.obj(
+          ("type", Json.fromString("array")),
+          ("items", encoder.typeEncode))) // TODO: need to fix the need to access head
+
+  /*
+  ("items", encoder.encode(list.head))))  // TODO: need to fix the need to access head
+   */
 
   implicit def optionEncoder[A](
       implicit encoder: JsonEncoder[A]): JsonEncoder[Option[A]] =
-    createEncoder(opt => opt.map(encoder.encode).getOrElse(Json.Null))
+    createEncoder(encoder.typeEncode)
+  // createEncoder(opt => opt.map(encoder.encode).getOrElse(Json.Null))
 
   trait JsonObjectEncoder[A] extends JsonEncoder[A] {
     def encode(value: A): Json
