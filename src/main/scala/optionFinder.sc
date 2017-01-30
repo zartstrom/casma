@@ -1,3 +1,4 @@
+/*
   trait OptionFinder[A] {
     def isOption(value: A): Boolean
   }
@@ -7,23 +8,24 @@
     }
   implicit def missFinder[A]: OptionFinder[A] = createOptionFinder(_ => false)
   implicit def hitFinder[A]: OptionFinder[Option[A]] = createOptionFinder(_ => true)
+  */
 
   //trait HorseFinder[A]{
   //  def isHorse: Boolean
   //}
-  case class HorseFinder[A](isTrue: Boolean)
+  case class OptionFinder[A](isOption: Boolean)
 
-  implicit def missHorse[A]: HorseFinder[A] = HorseFinder(false)
-  implicit def hitHorse[A]: HorseFinder[Option[A]] = HorseFinder(true)
+  implicit def notOption[A]: OptionFinder[A] = OptionFinder(false)
+  //implicit def hitOption[A]: OptionFinder[Option[A]] = OptionFinder(true)
 
-  def test[A](value: A)(implicit optionFinder: OptionFinder[A], hf: HorseFinder[A]): String = {
-    //if (optionFinder.isOption(value)) { "Option"} else { "Something else"}
-    if (hf.isTrue) { "Found Option"} else { "Found something else"}
+  def myFunction[A](value: A)(implicit optionFinder: OptionFinder[A]): String = {
+    if (optionFinder.isOption) {"Found Option"} else {"Found something else"}
   }
-  val a: Option[String] = Some("sfjal")
-  val b: Option[List[Int]] = None
-  val x = test(a)
-  val x2 = test(Some("d"))
-  val x3 = test(None)
-  val y = test(4)
-  val z = test(b)
+  val x1: Option[String] = Some("sfjal")
+  val x2: Option[List[Int]] = None
+  myFunction(None:Option[Double])
+  val x = myFunction(x2)
+  val x4 = myFunction(Some("d"))
+  val x3 = myFunction(None)
+  val y = myFunction(4)
+  val z = myFunction(x3)
